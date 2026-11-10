@@ -3,13 +3,21 @@
 <head>
 <script src="config.js?v=cloudflare-1"></script>
 <script>
-// Hospedagem Cloudflare: sem service worker e sem modo PWA.
-// A API e fornecida no mesmo dominio pelo Worker.
+// Hospedagem Cloudflare: API de mesma origem pelo Worker.
+// A camada PWA apenas guarda a interface estática; nunca armazena /api/.
 </script>
 
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#08121c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Cursos APH">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png">
+<script src="/pwa.js" defer></script>
 <meta name="description" content="Portal de Cursos — APH Atendimento Inicial e outras formações com videoaulas, módulos e materiais didáticos.">
 <title>Portal de Cursos | APH</title>
 <link rel="preconnect" href="https://i.ytimg.com" crossorigin>
@@ -139,6 +147,13 @@ header{position:sticky;top:0;z-index:30;background:#09141feb;border-bottom:1px s
 .release-empty-notice{margin:22px 0 8px;padding:20px 22px;border:1px solid #ad7840;background:#352b24;border-radius:16px;color:#fff0d8;display:flex;flex-direction:column;gap:5px}
 .release-empty-notice span{font-size:13px;color:#e7ccb2}
 @media(max-width:640px){.release-list{display:block;padding:10px}.release-course{margin-bottom:9px}.release-course-head{padding:10px 11px}.release-panel-head .panel-head-actions{width:100%;justify-content:stretch}.release-panel-head .panel-head-actions .btn{flex:1}.release-module-row{gap:5px}.release-module-state{max-width:100px;font-size:10px}.release-summary{padding:11px}}
+
+/* PWA: avisos discretos fora do fluxo do cadastro */
+.pwa-offline-alert{margin:12px auto 0;padding:10px 14px;border:1px solid #946f3f;border-radius:12px;background:#34291d;color:#ffdc9a;font-size:13px;max-width:1280px}
+.pwa-update-notice{position:fixed;z-index:115;bottom:22px;left:50%;transform:translateX(-50%);display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:9px;width:min(510px,calc(100vw - 24px));padding:12px 14px;background:#123347;color:#fff;border:1px solid #73d4ed;border-radius:14px;box-shadow:0 12px 40px #0009;font-size:13px}
+.pwa-update-notice button{border:0;border-radius:9px;background:#88e2ff;color:#102635;padding:8px 12px;font-weight:800}
+@media(max-width:900px){.pwa-update-notice{bottom:calc(var(--mobile-bar-h,64px) + env(safe-area-inset-bottom,0px) + 12px)}}
+@media(display-mode:standalone){[data-pwa-install]{display:none!important}}
 </style>
 </head>
 <body>
@@ -153,10 +168,10 @@ header{position:sticky;top:0;z-index:30;background:#09141feb;border-bottom:1px s
 <symbol id="icon-upload" viewBox="0 0 24 24"><path d="M12 16V3m-5 5 5-5 5 5M4 16v4h16v-4"/></symbol>
 <symbol id="icon-file" viewBox="0 0 24 24"><path d="M5 2h9l5 5v15H5zM14 2v5h5M8 12h8M8 16h8"/></symbol>
 <symbol id="icon-exit" viewBox="0 0 24 24"><path d="M10 4H4v16h6M14 8l4 4-4 4m4-4H9"/></symbol>
-<symbol id="icon-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol></defs></svg>
+<symbol id="icon-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol><symbol id="icon-download" viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M4 17v4h16v-4"/></symbol></defs></svg>
 <header><div class="container head">
 <a href="#inicio" class="brand" id="homeBrand"><span class="mark"><svg><use href="#life"/></svg></span><span><strong>PORTAL <span style="color:#8fd9f4">APH</span></strong><small>Cursos e formação</small></span></a>
-<nav class="headnav" aria-label="Navegação principal"><button id="navCatalog" type="button">Cursos</button><select id="desktopCourseSelect" class="desktop-course-select" aria-label="Escolher um curso"><option value="">Escolher curso...</option></select><button id="navProgress" type="button">Progresso</button><button id="navAdmin" type="button">Administração</button></nav>
+<nav class="headnav" aria-label="Navegação principal"><button id="navCatalog" type="button">Cursos</button><select id="desktopCourseSelect" class="desktop-course-select" aria-label="Escolher um curso"><option value="">Escolher curso...</option></select><button id="navProgress" type="button">Progresso</button><button id="navAdmin" type="button">Administração</button><button type="button" data-pwa-install aria-label="Instalar aplicativo Portal APH">Instalar app</button></nav>
 <button type="button" class="mobile-menu-trigger" id="mobileMenuTrigger" aria-expanded="false" aria-controls="mobileDrawer" aria-label="Abrir menu lateral"><svg class="nav-icon"><use href="#icon-menu"/></svg></button>
 </div></header>
 
@@ -173,6 +188,7 @@ header{position:sticky;top:0;z-index:30;background:#09141feb;border-bottom:1px s
    <button type="button" data-mobile-go="modulos"><svg class="nav-icon"><use href="#icon-layers"/></svg>Módulos</button>
    <button type="button" data-mobile-go="aulas"><svg class="nav-icon"><use href="#icon-play"/></svg>Videoaulas</button>
    <button type="button" data-mobile-go="progresso"><svg class="nav-icon"><use href="#icon-chart"/></svg>Meu progresso</button>
+   <button type="button" data-pwa-install><svg class="nav-icon"><use href="#icon-download"/></svg>Instalar aplicativo</button>
    <hr>
    <button type="button" data-mobile-go="admin-access"><svg class="nav-icon"><use href="#icon-settings"/></svg>Administração</button>
   </nav>
@@ -185,6 +201,7 @@ header{position:sticky;top:0;z-index:30;background:#09141feb;border-bottom:1px s
    <button type="button" data-mobile-go="admin-csv"><svg class="nav-icon"><use href="#icon-upload"/></svg>Importar vídeos CSV</button>
    <button type="button" data-mobile-go="admin-pdf"><svg class="nav-icon"><use href="#icon-file"/></svg>PDF do módulo</button>
    <button type="button" data-mobile-go="admin-backup"><svg class="nav-icon"><use href="#icon-file"/></svg>Backup JSON</button>
+   <button type="button" data-pwa-install><svg class="nav-icon"><use href="#icon-download"/></svg>Instalar aplicativo</button>
    <hr>
    <button type="button" data-mobile-go="inicio"><svg class="nav-icon"><use href="#icon-book"/></svg>Voltar ao portal</button>
    <button type="button" data-mobile-go="admin-logout" class="danger-link"><svg class="nav-icon"><use href="#icon-exit"/></svg>Sair da administração</button>
@@ -208,6 +225,8 @@ header{position:sticky;top:0;z-index:30;background:#09141feb;border-bottom:1px s
   <button type="button" data-mobile-go="admin-publishing"><svg class="nav-icon"><use href="#icon-settings"/></svg><span>Liberar</span></button>
  </div>
 </nav>
+<div class="container"><div id="pwaOfflineBanner" class="pwa-offline-alert" role="status" hidden>Sem conexão com a internet. A interface pode abrir, mas cursos, vídeos, PDFs e alterações administrativas precisam de internet.</div></div>
+<div class="pwa-update-notice" id="pwaUpdateNotice" role="status" hidden><strong>Nova versão disponível.</strong><button type="button" id="pwaUpdateApply">Atualizar aplicativo</button><button type="button" id="pwaUpdateDismiss" aria-label="Fechar aviso de atualização">Depois</button></div>
 <div class="container"><div id="demoNotice" class="notice" hidden>Modo demonstração local: alterações ficam somente neste navegador. Para usar o Google Drive, publique os arquivos no Google Apps Script conforme o guia.</div><div id="errorNotice" class="notice" hidden></div></div>
 <main id="publicView" class="container">
 <div id="noReleasedCourses" class="release-empty-notice" role="status" hidden>

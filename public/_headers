@@ -2,3 +2,11 @@
   Cache-Control: no-cache, must-revalidate
 /config.js
   Cache-Control: no-cache, must-revalidate
+/pwa.js
+  Cache-Control: no-cache, must-revalidate
+/sw.js
+  Cache-Control: no-store, max-age=0
+/manifest.webmanifest
+  Cache-Control: no-cache, must-revalidate
+/offline.html
+  Cache-Control: no-cache, must-revalidate
