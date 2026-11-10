@@ -3,7 +3,7 @@
  * vídeos, PDFs, tokens, respostas administrativas ou origens externas.
  */
 const CACHE_PREFIX = 'aph-cloudflare-shell-';
-const CACHE_NAME = CACHE_PREFIX + 'v1-20261110';
+const CACHE_NAME = CACHE_PREFIX + 'v2-d1-20261110';
 const CORE = [
   '/index.html', '/config.js', '/pwa.js', '/offline.html', '/manifest.webmanifest',
   '/icons/icon-192.png', '/icons/icon-512.png',

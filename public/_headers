@@ -10,3 +10,7 @@
   Cache-Control: no-cache, must-revalidate
 /offline.html
   Cache-Control: no-cache, must-revalidate
+
+/migrar.html
+  Cache-Control: no-store
+  X-Robots-Tag: noindex, nofollow

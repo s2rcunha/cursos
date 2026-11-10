@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#08121c">
+<title>Migração segura — Portal APH / D1</title>
+<style>
+:root{font-family:system-ui,Segoe UI,Arial,sans-serif;color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#07121d;color:#eff7fe;line-height:1.55}.wrap{max-width:770px;margin:auto;padding:32px 20px 85px}header{display:flex;gap:14px;align-items:center;margin-bottom:20px}.mark{display:grid;place-items:center;background:#102d45;color:#8ce8ee;width:55px;height:55px;border-radius:14px;font-size:28px}h1{font-size:clamp(25px,5vw,34px);line-height:1.15;margin:0}h2{font-size:19px;margin:0 0 12px}p{color:#bbcad8;margin:9px 0}.hint{font-size:13px;color:#a5bdce}section{background:#101f30;border:1px solid #2a475c;border-radius:16px;padding:20px;margin:16px 0}.note{border-left:3px solid #57ddd3;padding:13px;background:#102e35;border-radius:7px}.warn{border-left-color:#f6b568;background:#342a22}.field{display:block;margin:14px 0}label{display:block;font-weight:650;margin-bottom:5px}input{font:inherit;max-width:100%;width:100%;padding:12px 13px;border-radius:10px;border:1px solid #4d6a7f;background:#071624;color:#fff}button{font:inherit;font-weight:750;cursor:pointer;padding:12px 17px;border:0;border-radius:10px;background:#55d3ca;color:#042d33}button:disabled{opacity:.45;cursor:not-allowed}.secondary{background:#223b52;color:#e6f6fa}.actions{display:flex;gap:10px;flex-wrap:wrap}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#071624;border-radius:12px;padding:14px;font-size:13px;color:#e5f4fa;min-height:50px}.result{margin-top:16px}.good{color:#81e9a9}.bad{color:#ffb29e}ol{padding-left:22px}li{margin-bottom:8px}a{color:#91e3f3}small{color:#b2c8d9}code{font-size:.92em;color:#c9edb5}@media(max-width:500px){.wrap{padding:22px 13px 68px}section{padding:16px}}
+</style></head>
+<body><main class="wrap"><header><div class="mark">✚</div><div><h1>Migração do Portal APH para D1</h1><p>Importação inicial, protegida por chave secreta.</p></div></header>
+<div class="note warn"><strong>Não desative o Apps Script ainda.</strong><p>Esta página importa o catálogo completo uma única vez. A versão pública continua funcionando no Google Drive até você mudar <code>CATALOG_BACKEND</code> para <code>d1</code> no GitHub.</p></div>
+<section><h2>1. Verificar se o D1 está pronto</h2><p>Antes de importar, aplique o arquivo SQL <code>migrations/0001_portal_aph.sql</code> no banco <code>portal-aph-db</code>.</p><div class="actions"><button id="statusBtn" class="secondary" type="button">Verificar conexão com D1</button><a href="/" style="padding:12px">Voltar ao portal</a></div><pre id="statusResult" role="status">Ainda não verificado.</pre></section>
+<section><h2>2. Selecionar backup completo do catálogo</h2><p>Na administração da versão atual, clique em <strong>Exportar JSON</strong>. Esse backup inclui também cursos e módulos ocultos.</p><div class="field"><label for="file">Arquivo backup_catalogo_cursos.json</label><input type="file" id="file" accept=".json,application/json"></div><pre id="fileResult" role="status">Nenhum arquivo selecionado.</pre></section>
+<section><h2>3. Autorizar a importação</h2><p class="hint">A chave de migração deve ser criada em Cloudflare → Worker cursos-aph → Settings → Variables and Secrets, com o nome exato <code>MIGRATION_KEY</code> e tipo <strong>Secret</strong>. Escolha um valor aleatório com pelo menos 32 caracteres.</p>
+<div class="field"><label for="key">Chave secreta MIGRATION_KEY</label><input type="password" id="key" autocomplete="off" minlength="32" placeholder="A mesma chave que foi cadastrada no Cloudflare"></div>
+<div class="field"><label for="pass">Senha administrativa do novo D1 (mínimo 12 caracteres)</label><input type="password" id="pass" autocomplete="new-password" minlength="12"></div>
+<div class="field"><label for="confirm">Repita a senha</label><input type="password" id="confirm" autocomplete="new-password" minlength="12"></div>
+<div class="note warn"><strong>Atenção:</strong><p>O banco D1 terá sua própria senha de administração. Você pode escolher a mesma que utilizava no Apps Script, mas ela precisa ser configurada novamente aqui. Não coloque essa senha no GitHub.</p></div>
+<div class="actions" style="margin-top:15px"><button type="button" id="importBtn" disabled>Importar catálogo para o D1</button><button type="button" class="secondary" id="clearBtn">Limpar campos</button></div><pre id="importResult" role="status">Aguardando arquivo e configuração.</pre>
+</section>
+<section><h2>4. Verificar antes de ativar</h2><ol><li>Confirme se as quantidades de cursos, módulos e vídeos no D1 são iguais às do backup.</li><li>Abra <a href="/api/d1/status" target="_blank" rel="noopener noreferrer">/api/d1/status</a> e confirme <code>imported: true</code>.</li><li>Somente então, altere <code>"CATALOG_BACKEND": "legacy"</code> para <code>"CATALOG_BACKEND": "d1"</code> no <code>wrangler.jsonc</code> e publique pelo GitHub.</li><li>Valide a navegação no Chrome e no painel administrativo. Mantenha o backup original para retorno.</li></ol></section>
+</main>
+<script>
+'use strict';
+const $=s=>document.querySelector(s),file=$('#file'),statusResult=$('#statusResult'),fileResult=$('#fileResult'),importResult=$('#importResult');
+let catalog=null;
+const size=arr=>arr.reduce((n,c)=>n+c.modules.length,0);
+function counts(cat){return {cursos:cat.courses.length,modulos:size(cat.courses),videos:cat.courses.reduce((n,c)=>n+c.modules.reduce((m,x)=>m+x.videos.length,0),0),cursosLiberados:cat.courses.filter(c=>c.published===true).length};}
+function readiness(){ $('#importBtn').disabled=!catalog||!$('#key').value||!$('#pass').value||!$('#confirm').value; }
+['#key','#pass','#confirm'].forEach(k=>$(k).addEventListener('input',readiness));
+async function status(){statusResult.textContent='Consultando D1...';try{const r=await fetch('/api/d1/status',{cache:'no-store'}),j=await r.json();statusResult.textContent=JSON.stringify(j,null,2);return j;}catch(e){statusResult.textContent='Falha na conexão: '+e.message;return null;}}
+$('#statusBtn').addEventListener('click',status);
+file.addEventListener('change',async()=>{
+  catalog=null;$('#importBtn').disabled=true;
+  const f=file.files?.[0];if(!f){fileResult.textContent='Nenhum arquivo selecionado.';return;}
+  try{
+    if(f.size>2300000)throw Error('Arquivo muito grande para este importador (limite de 2,3 MB).');
+    const doc=JSON.parse(await f.text());
+    if(!doc||!Array.isArray(doc.courses)||!doc.courses.length)throw Error('JSON sem cursos. Exporte o catálogo completo na administração.');
+    doc.courses.forEach(c=>{if(!c.id||!Array.isArray(c.modules))throw Error('Curso ou módulos inválidos.');c.modules.forEach(m=>{if(!m.id||!Array.isArray(m.videos))throw Error('Módulo ou vídeos inválidos.');});});
+    catalog=doc;
+    fileResult.textContent='Backup: '+f.name+'\n'+JSON.stringify(counts(catalog),null,2)+'\nRevisão: '+(doc.revision??'não informada');
+    readiness();
+  }catch(e){fileResult.textContent='Erro no arquivo: '+e.message;}
+});
+$('#clearBtn').addEventListener('click',()=>{catalog=null;file.value='';$('#key').value='';$('#pass').value='';$('#confirm').value='';fileResult.textContent='Nenhum arquivo selecionado.';importResult.textContent='Campos apagados.';readiness();});
+$('#importBtn').addEventListener('click',async()=>{
+  if(!catalog)return;
+  const pass=$('#pass').value;
+  if(pass.length<12||pass!==$('#confirm').value){importResult.textContent='As senhas não conferem ou têm menos de 12 caracteres.';return;}
+  if($('#key').value.length<32){importResult.textContent='A chave MIGRATION_KEY precisa ter no mínimo 32 caracteres.';return;}
+  if(!confirm('Importar '+counts(catalog).cursos+' cursos para o banco D1? Esta operação inicial é permitida apenas uma vez.'))return;
+  $('#importBtn').disabled=true;importResult.textContent='Importando e verificando transação no D1...';
+  try{
+    const r=await fetch('/api/d1/import',{method:'POST',headers:{'Content-Type':'application/json'},cache:'no-store',body:JSON.stringify({migrationKey:$('#key').value,adminPassword:pass,catalog})});
+    const j=await r.json();
+    if(!r.ok||!j.ok)throw Error(j.error||'HTTP '+r.status);
+    importResult.textContent='IMPORTAÇÃO CONCLUÍDA!\n'+JSON.stringify(j,null,2)+'\nConfira o status antes de ativar o backend D1.';
+    $('#key').value='';$('#pass').value='';$('#confirm').value='';
+    await status();
+  }catch(e){importResult.textContent='IMPORTAÇÃO NÃO CONCLUÍDA: '+e.message+'\nNenhuma alteração deve ser feita no backend público até confirmar o status.';readiness();}
+});
+status();
+</script></body></html>

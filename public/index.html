@@ -345,7 +345,8 @@ async function postToScript(request){
     const response=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify(request),credentials:'same-origin',cache:'no-store',signal:controller.signal});
     const data=await response.json().catch(()=>{throw Error('A ponte nao confirmou a operacao.');});
-    if(!response.ok||!data.accepted)throw Error(data.error||'Nao foi possivel enviar a operacao ao servidor.');
+    if(!response.ok||(!data.accepted&&!data.ok))throw Error(data.error||'Nao foi possivel enviar a operacao ao servidor.');
+    if(data.ok&&data.direct===true)return {direct:true,result:data.result};
   }catch(err){
     if(err.name==='AbortError')throw Error('Operacao sem confirmacao. Atualize o catalogo antes de tentar de novo.');
     throw err;
@@ -359,7 +360,8 @@ function decodeBase64Utf8(str){
 }
 async function remoteRpc(method,args){
   const id=randomRequestId();
-  await postToScript({id,method,args});
+  const direct=await postToScript({id,method,args});
+  if(direct&&direct.direct===true)return direct.result;
   {
     let stateResult;
     for(let attempt=0;attempt<75;attempt++){
@@ -408,7 +410,7 @@ function configureBackend(){
 
 let toastTimer;
 function toast(msg){const box=$('#toast');box.textContent=msg;box.hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>{box.hidden=true},4800)}
-function busy(on,label='Salvando no Google Drive...'){state.busy=on;$('#busy').hidden=!on;$('#busyLabel').textContent=label}
+function busy(on,label='Salvando alterações...'){state.busy=on;$('#busy').hidden=!on;$('#busyLabel').textContent=label}
 function warn(msg){$('#errorNotice').hidden=false;$('#errorNotice').textContent=msg}
 function countVideos(c){return c.modules.reduce((n,m)=>n+m.videos.length,0)}
 function duration(secs){secs=Number(secs)||0;return secs>0?(secs>=3600?Math.floor(secs/3600)+':'+String(Math.floor((secs%3600)/60)).padStart(2,'0')+':'+String(secs%60).padStart(2,'0'):Math.floor(secs/60)+':'+String(secs%60).padStart(2,'0')):'Não informado'}
@@ -660,7 +662,7 @@ function adminRow(title,count,i,kind,selected,onPick){const row=el('div','admin-
 function adminActions(row,edit,del,up,down,i,total){const bar=el('div','item-actions');const e=button('Editar','iconbtn',edit),d=button('Excluir','iconbtn danger',del),u=button('↑','iconbtn',up),v=button('↓','iconbtn',down);u.disabled=i===0;v.disabled=i===total-1;bar.append(e,d,u,v);row.append(bar)}
 async function saveMutation(mutator,success){if(state.busy)return;const current=state.admin;if(!current)return;const next=deep(current);
   try{mutator(next)}catch(e){toast(e.message);return}
-  busy(true);try{const saved=await api('apiSaveCatalog',state.token,next,current.revision);state.admin=saved;state.public=await api('apiGetPublicCatalog');renderAdmin();renderPublic();toast(success||'Salvo no Google Drive.')}catch(e){renderAdmin();renderPublic();toast('Não foi possível salvar: '+e.message);if(e.message.includes('CONFLITO')){try{state.admin=await api('apiGetAdminCatalog',state.token);renderAdmin();toast('Conflito detectado. Catálogo recarregado; refaça sua alteração.')}catch{}}}finally{busy(false)}}
+  busy(true);try{const saved=await api('apiSaveCatalog',state.token,next,current.revision);state.admin=saved;state.public=await api('apiGetPublicCatalog');renderAdmin();renderPublic();toast(success||'Alterações salvas com sucesso.')}catch(e){renderAdmin();renderPublic();toast('Não foi possível salvar: '+e.message);if(e.message.includes('CONFLITO')){try{state.admin=await api('apiGetAdminCatalog',state.token);renderAdmin();toast('Conflito detectado. Catálogo recarregado; refaça sua alteração.')}catch{}}}finally{busy(false)}}
 function reorder(type,index,diff){if(type==='course')saveMutation(db=>{const a=db.courses;[a[index],a[index+diff]]=[a[index+diff],a[index]]},'Ordem dos cursos atualizada.');
   if(type==='module')saveMutation(db=>{const a=db.courses.find(c=>c.id===state.adminCourseId).modules;[a[index],a[index+diff]]=[a[index+diff],a[index]]},'Ordem dos módulos atualizada.');
   if(type==='video')saveMutation(db=>{const a=db.courses.find(c=>c.id===state.adminCourseId).modules.find(m=>m.id===state.adminModuleId).videos;[a[index],a[index+diff]]=[a[index+diff],a[index]]},'Ordem das aulas atualizada.');
