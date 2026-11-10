@@ -3,7 +3,10 @@
  * Nao faz chamadas ao Google. Tokens de sessao e hashes nunca sao devolvidos ao publico.
  */
 const MAX_BYTES = 2_500_000;
-const ITERATIONS = 120_000;
+// Cloudflare Workers (producao) limita PBKDF2 a 100.000 iteracoes por chamada.
+// O custo efetivamente utilizado fica registrado em admin_auth.iterations.
+// Nao altere o valor gravado em registros existentes sem recalcular seus hashes.
+const ITERATIONS = 100_000;
 const SESSION_SECONDS = 8 * 3600;
 const AUTH_METHODS = new Set(['apiLogin','apiLogout','apiGetAdminCatalog','apiSaveCatalog','apiChangePassword']);
 const JSON_HEADERS = {
