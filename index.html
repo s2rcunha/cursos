@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<script src="config.js?v=20261110-api-configurada"></script>
+<script src="config.js"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#08121c">
@@ -243,8 +243,9 @@ header{position:sticky;top:0;z-index:30;background:#09141feb;border-bottom:1px s
 'use strict';
 // O front-end agora e hospedado pelo GitHub Pages. Nenhuma credencial vai ao repositorio.
 const DEMO=false;
-// URL fixa de contingencia: mesmo com o config.js ausente ou antigo, o portal abre sem configuracao manual.
-const API_URL=(String(window.APH_API_URL||'').trim() || 'https://script.google.com/macros/s/AKfycbymdOy53r_yr72xCUpmF1WTVKEENAk8txd0sxCKLCsv5Kr37Cye5xJyHaShRiRqItPF/exec');
+const API_URL=(String(window.APH_API_URL||'').trim() || (()=>{
+  try{return localStorage.getItem('aph_portal_api_url_v2')||''}catch{return ''}
+})()).trim();
 const API_URL_OK=/^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec\/?(?:\?.*)?$/.test(API_URL);
 
 const $=s=>document.querySelector(s);
