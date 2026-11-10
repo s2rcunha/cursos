@@ -22,5 +22,10 @@
   ],
   "vars": {
     "CATALOG_BACKEND": "legacy"
+  },
+  "secrets": {
+    "required": [
+      "MIGRATION_KEY"
+    ]
   }
 }
